@@ -6,13 +6,13 @@ app.innerHTML = `
   <div class="relative min-h-screen overflow-hidden bg-slate-950 text-slate-100">
     <div id="scene" class="absolute inset-0"></div>
     <div class="pointer-events-none absolute inset-0">
-      <div class="absolute bottom-4 left-4 right-4 max-w-sm rounded-[1.75rem] border border-white/20 bg-slate-900/60 p-4 shadow-2xl shadow-black/40 backdrop-blur-xl sm:bottom-8 sm:left-8 sm:right-auto">
+      <div class="absolute bottom-3 left-3 right-3 rounded-[1.5rem] border border-white/20 bg-slate-900/65 p-3 shadow-2xl shadow-black/40 backdrop-blur-xl sm:bottom-6 sm:left-6 sm:right-auto sm:max-w-[20rem] sm:p-4 md:max-w-[22rem] lg:max-w-[24rem]">
         <div class="flex items-center gap-3">
-          <div class="flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-emerald-300 to-cyan-400 text-sm font-semibold text-slate-950">SC</div>
-          <div>
-            <p class="text-[11px] uppercase tracking-[0.3em] text-cyan-300">stoner.cat</p>
-            <p class="text-sm font-semibold text-white">Sage Canyon</p>
-            <p class="text-sm text-slate-400">Liminal profile</p>
+          <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-emerald-300 to-cyan-400 text-sm font-semibold text-slate-950">SC</div>
+          <div class="min-w-0">
+            <p class="text-[10px] uppercase tracking-[0.3em] text-cyan-300">stoner.cat</p>
+            <p class="truncate text-sm font-semibold text-white">Sage Canyon</p>
+            <p class="truncate text-sm text-slate-400">Liminal profile</p>
           </div>
         </div>
         <p class="mt-3 text-sm leading-6 text-slate-300">Standing in the glow of a quiet horizon, looking out across a warm, rolling plain.</p>
@@ -39,12 +39,15 @@ sceneContainer.appendChild(renderer.domElement);
 
 const hemiLight = new THREE.HemisphereLight(0xb9e0ff, 0x32411e, 0.8);
 scene.add(hemiLight);
-const sunLight = new THREE.DirectionalLight(0xffffff, 1.15);
+const sunLight = new THREE.DirectionalLight(0xffffff, 1.1);
 sunLight.position.set(10, 18, 6);
 scene.add(sunLight);
 const fillLight = new THREE.DirectionalLight(0x7ec4ff, 0.35);
 fillLight.position.set(-8, 7, -8);
 scene.add(fillLight);
+const rimLight = new THREE.PointLight(0xfff2c8, 6, 90, 2);
+rimLight.position.set(0, 20, -30);
+scene.add(rimLight);
 
 const skyMaterial = new THREE.ShaderMaterial({
   side: THREE.BackSide,
@@ -86,7 +89,8 @@ for (let i = 0; i < positions.count; i += 1) {
   const height = getTerrainHeight(x, z);
   positions.setY(i, height);
   const color = new THREE.Color();
-  color.setHSL(0.28 + height * 0.008, 0.45, 0.2 + height * 0.045);
+  const shade = 0.18 + Math.max(0, height) * 0.07 + Math.sin((x + z) * 0.025) * 0.03;
+  color.setHSL(0.28 + height * 0.01, 0.42, shade);
   colors.push(color.r, color.g, color.b);
 }
 terrainGeometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
@@ -102,26 +106,28 @@ const terrain = new THREE.Mesh(terrainGeometry, terrainMaterial);
 scene.add(terrain);
 
 const grassGroup = new THREE.Group();
-for (let i = 0; i < 320; i += 1) {
+for (let i = 0; i < 420; i += 1) {
   const x = (Math.random() - 0.5) * terrainSize * 0.9;
   const z = (Math.random() - 0.5) * terrainSize * 0.9;
   const y = getTerrainHeight(x, z) + 0.06;
   const blade = new THREE.Mesh(
-    new THREE.BoxGeometry(0.04, 0.12 + Math.random() * 0.18, 0.04),
+    new THREE.BoxGeometry(0.035, 0.11 + Math.random() * 0.2, 0.035),
     new THREE.MeshStandardMaterial({
-      color: new THREE.Color(0x4fb36d).offsetHSL(0, 0, (Math.random() - 0.5) * 0.06)
+      color: new THREE.Color(0x4fb36d).offsetHSL(0, 0, (Math.random() - 0.5) * 0.08)
     })
   );
   blade.position.set(x, y, z);
   blade.rotation.y = Math.random() * Math.PI;
-  blade.rotation.z = (Math.random() - 0.5) * 0.18;
+  blade.rotation.z = (Math.random() - 0.5) * 0.16;
+  blade.scale.setScalar(0.85 + Math.random() * 0.35);
   grassGroup.add(blade);
 }
 scene.add(grassGroup);
 
 function getTerrainHeight(x, z) {
   const base = samplePerlin(x * 0.017, z * 0.017);
-  return Math.max(0.1, base * 2.3 + Math.sin(x * 0.04) * 0.12 + Math.cos(z * 0.03) * 0.1);
+  const ridge = Math.sin((x + z) * 0.03) * 0.18 + Math.cos(x * 0.02 - z * 0.015) * 0.1;
+  return Math.max(0.1, base * 2.2 + ridge + Math.sin(x * 0.04) * 0.12 + Math.cos(z * 0.03) * 0.1);
 }
 
 function samplePerlin(x, z) {
