@@ -45,9 +45,22 @@ scene.add(sunLight);
 const fillLight = new THREE.DirectionalLight(0x7ec4ff, 0.35);
 fillLight.position.set(-8, 7, -8);
 scene.add(fillLight);
-const rimLight = new THREE.PointLight(0xfff2c8, 6, 90, 2);
+const rimLight = new THREE.PointLight(0xfff2c8, 8, 100, 2);
 rimLight.position.set(0, 20, -30);
 scene.add(rimLight);
+
+const mist = new THREE.Mesh(
+  new THREE.PlaneGeometry(220, 60),
+  new THREE.MeshBasicMaterial({
+    color: 0xecefe9,
+    transparent: true,
+    opacity: 0.18,
+    depthWrite: false
+  })
+);
+mist.position.set(0, 12, -70);
+mist.rotation.x = -Math.PI / 2;
+scene.add(mist);
 
 const skyMaterial = new THREE.ShaderMaterial({
   side: THREE.BackSide,
@@ -81,6 +94,14 @@ const terrainSize = 160;
 const terrainSegments = 180;
 const terrainGeometry = new THREE.PlaneGeometry(terrainSize, terrainSize, terrainSegments, terrainSegments);
 terrainGeometry.rotateX(-Math.PI / 2);
+
+const horizon = new THREE.Mesh(
+  new THREE.PlaneGeometry(terrainSize * 1.2, 30, 8, 8),
+  new THREE.MeshBasicMaterial({ color: 0x7a9d84, transparent: true, opacity: 0.65 })
+);
+horizon.position.set(0, 0.5, -terrainSize * 0.45);
+horizon.rotation.x = -Math.PI / 2;
+scene.add(horizon);
 const positions = terrainGeometry.attributes.position;
 const colors = [];
 for (let i = 0; i < positions.count; i += 1) {
@@ -127,7 +148,8 @@ scene.add(grassGroup);
 function getTerrainHeight(x, z) {
   const base = samplePerlin(x * 0.017, z * 0.017);
   const ridge = Math.sin((x + z) * 0.03) * 0.18 + Math.cos(x * 0.02 - z * 0.015) * 0.1;
-  return Math.max(0.1, base * 2.2 + ridge + Math.sin(x * 0.04) * 0.12 + Math.cos(z * 0.03) * 0.1);
+  const glow = Math.max(0, 1 - Math.abs(z) / (terrainSize * 0.55)) * 0.25;
+  return Math.max(0.1, base * 2.2 + ridge + Math.sin(x * 0.04) * 0.12 + Math.cos(z * 0.03) * 0.1 + glow * 0.35);
 }
 
 function samplePerlin(x, z) {
@@ -164,8 +186,15 @@ function hash(x, z) {
 function animate(time) {
   requestAnimationFrame(animate);
   const sway = Math.sin(time * 0.0006) * 0.008;
+  const wind = Math.sin(time * 0.0012) * 0.015;
   camera.position.y = 1.72 + sway;
   camera.lookAt(lookTarget);
+
+  grassGroup.children.forEach((blade, index) => {
+    const base = Math.sin(time * 0.001 + index * 0.08) * 0.008;
+    blade.rotation.z = (index % 2 === 0 ? -1 : 1) * 0.08 + wind + base;
+  });
+
   renderer.render(scene, camera);
 }
 animate();
