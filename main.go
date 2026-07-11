@@ -1,20 +1,31 @@
 package main
 
 import (
-    "fmt"
-    "log"
-    "net/http"
+	"fmt"
+	"log"
+	"net/http"
+	"os"
 )
 
 func main() {
-    http.HandleFunc("/api/health", func(w http.ResponseWriter, r *http.Request) {
-        w.Header().Set("Content-Type", "application/json")
-        _, _ = fmt.Fprint(w, `{"status":"ok"}`)
-    })
+	http.HandleFunc("/api/health", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = fmt.Fprint(w, `{"status":"ok"}`)
+	})
 
-    fs := http.FileServer(http.Dir("dist"))
-    http.Handle("/", http.StripPrefix("/", fs))
+	staticDir := "dist"
+	if _, err := os.Stat(staticDir); err != nil {
+		staticDir = "."
+	}
 
-    log.Println("server listening on http://127.0.0.1:8080")
-    log.Fatal(http.ListenAndServe(":8080", nil))
+	fs := http.FileServer(http.Dir(staticDir))
+	http.Handle("/", http.StripPrefix("/", fs))
+
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
+
+	log.Printf("server listening on http://0.0.0.0:%s", port)
+	log.Fatal(http.ListenAndServe(":"+port, nil))
 }
