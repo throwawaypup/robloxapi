@@ -3,115 +3,163 @@ import * as THREE from 'three';
 
 const app = document.querySelector('#app');
 app.innerHTML = `
-  <div class="min-h-screen overflow-hidden bg-[radial-gradient(circle_at_top,_#1d3a5b,_#050816_60%)] text-slate-100">
+  <div class="relative min-h-screen overflow-hidden bg-slate-950 text-slate-100">
     <div id="scene" class="absolute inset-0"></div>
-    <div class="relative z-10 flex min-h-screen flex-col justify-between p-4 sm:p-8">
-      <header class="flex items-center justify-between rounded-full border border-white/20 bg-white/10 px-4 py-3 backdrop-blur-xl">
-        <div>
-          <p class="text-xs uppercase tracking-[0.3em] text-emerald-300">stoner.cat</p>
-          <h1 class="text-lg font-semibold">A calm digital horizon</h1>
+    <div class="pointer-events-none absolute inset-0">
+      <div class="absolute bottom-4 left-4 right-4 max-w-sm rounded-[1.75rem] border border-white/20 bg-slate-900/60 p-4 shadow-2xl shadow-black/40 backdrop-blur-xl sm:bottom-8 sm:left-8 sm:right-auto">
+        <div class="flex items-center gap-3">
+          <div class="flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-emerald-300 to-cyan-400 text-sm font-semibold text-slate-950">SC</div>
+          <div>
+            <p class="text-[11px] uppercase tracking-[0.3em] text-cyan-300">stoner.cat</p>
+            <p class="text-sm font-semibold text-white">Sage Canyon</p>
+            <p class="text-sm text-slate-400">Liminal profile</p>
+          </div>
         </div>
-        <div class="rounded-full border border-emerald-400/40 bg-emerald-400/10 px-3 py-1 text-sm text-emerald-200">Live</div>
-      </header>
-
-      <main class="grid flex-1 items-end gap-4 lg:grid-cols-[1.25fr_0.75fr] lg:gap-8">
-        <section class="max-w-2xl rounded-[2rem] border border-white/15 bg-slate-900/45 p-5 shadow-2xl shadow-black/30 backdrop-blur-2xl sm:p-8">
-          <p class="mb-3 text-sm uppercase tracking-[0.35em] text-cyan-300">Experimental world</p>
-          <h2 class="text-3xl font-semibold sm:text-5xl">A soft sky, rolling hills, and a breeze of neon calm.</h2>
-          <p class="mt-4 max-w-xl text-sm leading-7 text-slate-300 sm:text-base">This landing experience pairs a three-dimensional environment with a polished floating menu and a minimal profile card.</p>
-        </section>
-
-        <aside class="rounded-[2rem] border border-white/15 bg-slate-900/45 p-5 shadow-2xl shadow-black/30 backdrop-blur-2xl sm:p-6">
-          <div class="flex items-center gap-3">
-            <div class="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-emerald-400 to-cyan-500 text-lg font-semibold text-slate-950">SC</div>
-            <div>
-              <p class="text-sm font-semibold">Sage Canyon</p>
-              <p class="text-sm text-slate-400">Digital curator</p>
-            </div>
-          </div>
-          <div class="mt-6 rounded-2xl border border-white/10 bg-black/20 p-4 text-sm text-slate-300">
-            <p class="font-medium text-slate-100">Status</p>
-            <p class="mt-2">Building dreamy worlds with simple motion and thoughtful atmosphere.</p>
-          </div>
-        </aside>
-      </main>
+        <p class="mt-3 text-sm leading-6 text-slate-300">Standing in the glow of a quiet horizon, looking out across a warm, rolling plain.</p>
+      </div>
     </div>
   </div>
 `;
 
 const sceneContainer = document.getElementById('scene');
 const scene = new THREE.Scene();
-scene.fog = new THREE.FogExp2(0x07111f, 0.035);
+scene.fog = new THREE.Fog(0x8bbad2, 35, 140);
 
-const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 250);
-camera.position.set(0, 3.2, 8);
+const camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.1, 250);
+camera.position.set(0, 1.72, 0);
+const lookTarget = new THREE.Vector3(0, 1.7, -24);
+camera.lookAt(lookTarget);
 
 const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.setClearColor(0x88c8ff, 1);
 sceneContainer.appendChild(renderer.domElement);
 
-const ambient = new THREE.AmbientLight(0x9acaff, 0.6);
-scene.add(ambient);
-const sun = new THREE.DirectionalLight(0xffffff, 1.2);
-sun.position.set(4, 10, 6);
-scene.add(sun);
+const hemiLight = new THREE.HemisphereLight(0xb9e0ff, 0x32411e, 0.8);
+scene.add(hemiLight);
+const sunLight = new THREE.DirectionalLight(0xffffff, 1.15);
+sunLight.position.set(10, 18, 6);
+scene.add(sunLight);
+const fillLight = new THREE.DirectionalLight(0x7ec4ff, 0.35);
+fillLight.position.set(-8, 7, -8);
+scene.add(fillLight);
 
-const skyGeometry = new THREE.BoxGeometry(200, 200, 200);
-const skyMaterial = new THREE.MeshBasicMaterial({
-  color: 0x7cc7ff,
-  side: THREE.BackSide
+const skyMaterial = new THREE.ShaderMaterial({
+  side: THREE.BackSide,
+  uniforms: {
+    topColor: { value: new THREE.Color(0x8fd9ff) },
+    bottomColor: { value: new THREE.Color(0x42667d) }
+  },
+  vertexShader: `
+    varying vec3 vWorldPosition;
+    void main() {
+      vec4 worldPosition = modelMatrix * vec4(position, 1.0);
+      vWorldPosition = worldPosition.xyz;
+      gl_Position = projectionMatrix * viewMatrix * worldPosition;
+    }
+  `,
+  fragmentShader: `
+    uniform vec3 topColor;
+    uniform vec3 bottomColor;
+    varying vec3 vWorldPosition;
+    void main() {
+      float h = normalize(vWorldPosition).y;
+      vec3 col = mix(bottomColor, topColor, max(pow(max(h, 0.0), 0.35), 0.0));
+      gl_FragColor = vec4(col, 1.0);
+    }
+  `
 });
-const skybox = new THREE.Mesh(skyGeometry, skyMaterial);
-scene.add(skybox);
+const skyDome = new THREE.Mesh(new THREE.SphereGeometry(180, 32, 16), skyMaterial);
+scene.add(skyDome);
 
-const terrainGeometry = new THREE.PlaneGeometry(70, 70, 120, 120);
+const terrainSize = 160;
+const terrainSegments = 180;
+const terrainGeometry = new THREE.PlaneGeometry(terrainSize, terrainSize, terrainSegments, terrainSegments);
 terrainGeometry.rotateX(-Math.PI / 2);
+const positions = terrainGeometry.attributes.position;
+const colors = [];
+for (let i = 0; i < positions.count; i += 1) {
+  const x = positions.getX(i);
+  const z = positions.getZ(i);
+  const height = getTerrainHeight(x, z);
+  positions.setY(i, height);
+  const color = new THREE.Color();
+  color.setHSL(0.28 + height * 0.008, 0.45, 0.2 + height * 0.045);
+  colors.push(color.r, color.g, color.b);
+}
+terrainGeometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+positions.needsUpdate = true;
+terrainGeometry.computeVertexNormals();
+
 const terrainMaterial = new THREE.MeshStandardMaterial({
-  color: 0x5bbd7c,
+  vertexColors: true,
   roughness: 0.95,
-  metalness: 0.02
+  metalness: 0.01
 });
 const terrain = new THREE.Mesh(terrainGeometry, terrainMaterial);
 scene.add(terrain);
 
-const positions = terrainGeometry.attributes.position;
-for (let i = 0; i < positions.count; i += 1) {
-  const x = positions.getX(i);
-  const z = positions.getZ(i);
-  const n = sampleNoise(x * 0.08, z * 0.08);
-  const h = (n + 0.5) * 2.1;
-  positions.setY(i, h);
-}
-positions.needsUpdate = true;
-terrainGeometry.computeVertexNormals();
-
 const grassGroup = new THREE.Group();
-for (let i = 0; i < 250; i += 1) {
+for (let i = 0; i < 320; i += 1) {
+  const x = (Math.random() - 0.5) * terrainSize * 0.9;
+  const z = (Math.random() - 0.5) * terrainSize * 0.9;
+  const y = getTerrainHeight(x, z) + 0.06;
   const blade = new THREE.Mesh(
-    new THREE.BoxGeometry(0.05, 0.18 + Math.random() * 0.25, 0.05),
-    new THREE.MeshStandardMaterial({ color: new THREE.Color(0x4bbf71).offsetHSL(0, 0, (Math.random() - 0.5) * 0.06) })
+    new THREE.BoxGeometry(0.04, 0.12 + Math.random() * 0.18, 0.04),
+    new THREE.MeshStandardMaterial({
+      color: new THREE.Color(0x4fb36d).offsetHSL(0, 0, (Math.random() - 0.5) * 0.06)
+    })
   );
-  blade.position.set(
-    (Math.random() - 0.5) * 60,
-    0.1 + Math.random() * 0.15,
-    (Math.random() - 0.5) * 60
-  );
+  blade.position.set(x, y, z);
   blade.rotation.y = Math.random() * Math.PI;
-  blade.rotation.z = (Math.random() - 0.5) * 0.15;
+  blade.rotation.z = (Math.random() - 0.5) * 0.18;
   grassGroup.add(blade);
 }
 scene.add(grassGroup);
 
-function sampleNoise(x, z) {
-  const sx = Math.sin(x * 2.1) * 0.5 + Math.cos(z * 1.3) * 0.5;
-  const sy = Math.sin((x + z) * 0.9) * 0.35 + Math.cos(z * 1.7) * 0.35;
-  return sx * 0.6 + sy * 0.4;
+function getTerrainHeight(x, z) {
+  const base = samplePerlin(x * 0.017, z * 0.017);
+  return Math.max(0.1, base * 2.3 + Math.sin(x * 0.04) * 0.12 + Math.cos(z * 0.03) * 0.1);
 }
 
-function animate() {
+function samplePerlin(x, z) {
+  const x0 = Math.floor(x);
+  const z0 = Math.floor(z);
+  const xf = x - x0;
+  const zf = z - z0;
+  const u = fade(xf);
+  const v = fade(zf);
+
+  const n00 = hash(x0, z0);
+  const n10 = hash(x0 + 1, z0);
+  const n01 = hash(x0, z0 + 1);
+  const n11 = hash(x0 + 1, z0 + 1);
+
+  const x1 = lerp(n00, n10, u);
+  const x2 = lerp(n01, n11, u);
+  return lerp(x1, x2, v);
+}
+
+function fade(t) {
+  return t * t * t * (t * (t * 6 - 15) + 10);
+}
+
+function lerp(a, b, t) {
+  return a + (b - a) * t;
+}
+
+function hash(x, z) {
+  const s = Math.sin(x * 127.1 + z * 311.7) * 43758.5453123;
+  return s - Math.floor(s);
+}
+
+function animate(time) {
   requestAnimationFrame(animate);
+  const sway = Math.sin(time * 0.0006) * 0.008;
+  camera.position.y = 1.72 + sway;
+  camera.lookAt(lookTarget);
   renderer.render(scene, camera);
 }
 animate();
