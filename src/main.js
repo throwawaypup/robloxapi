@@ -6,6 +6,7 @@ app.innerHTML = `
   <div class="relative min-h-screen overflow-hidden bg-slate-950 text-slate-100">
     <div id="scene" class="absolute inset-0"></div>
     <div class="pointer-events-none absolute inset-0">
+      <div class="absolute right-2 top-2 text-[8px] uppercase tracking-[0.3em] text-slate-200/80 sm:right-3 sm:top-3 sm:text-[9px]">stoner.cat</div>
       <div class="absolute bottom-3 left-3 right-3 rounded-[1.5rem] border border-white/20 bg-slate-900/65 p-3 shadow-2xl shadow-black/40 backdrop-blur-xl sm:bottom-6 sm:left-6 sm:right-auto sm:max-w-[20rem] sm:p-4 md:max-w-[22rem] lg:max-w-[24rem]">
         <div class="flex items-center gap-3">
           <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-emerald-300 to-cyan-400 text-sm font-semibold text-slate-950">SC</div>
@@ -127,21 +128,27 @@ const terrain = new THREE.Mesh(terrainGeometry, terrainMaterial);
 scene.add(terrain);
 
 const grassGroup = new THREE.Group();
-for (let i = 0; i < 420; i += 1) {
-  const x = (Math.random() - 0.5) * terrainSize * 0.9;
-  const z = (Math.random() - 0.5) * terrainSize * 0.9;
-  const y = getTerrainHeight(x, z) + 0.06;
-  const blade = new THREE.Mesh(
-    new THREE.BoxGeometry(0.035, 0.11 + Math.random() * 0.2, 0.035),
-    new THREE.MeshStandardMaterial({
-      color: new THREE.Color(0x4fb36d).offsetHSL(0, 0, (Math.random() - 0.5) * 0.08)
-    })
-  );
-  blade.position.set(x, y, z);
-  blade.rotation.y = Math.random() * Math.PI;
-  blade.rotation.z = (Math.random() - 0.5) * 0.16;
-  blade.scale.setScalar(0.85 + Math.random() * 0.35);
-  grassGroup.add(blade);
+const grassRows = 24;
+const grassCols = 24;
+for (let row = 0; row < grassRows; row += 1) {
+  for (let col = 0; col < grassCols; col += 1) {
+    const x = (col - (grassCols - 1) / 2) * 5.4;
+    const z = (row - (grassRows - 1) / 2) * 5.4;
+    if (Math.abs(x) > terrainSize * 0.38 || Math.abs(z) > terrainSize * 0.38) continue;
+
+    const y = getTerrainHeight(x, z) + 0.06;
+    const blade = new THREE.Mesh(
+      new THREE.BoxGeometry(0.035, 0.11 + ((row + col) % 5) * 0.018, 0.035),
+      new THREE.MeshStandardMaterial({
+        color: new THREE.Color(0x4fb36d).offsetHSL(0, 0, ((row + col) % 7) * 0.007)
+      })
+    );
+    blade.position.set(x, y, z);
+    blade.rotation.y = (row % 3) * 0.35;
+    blade.rotation.z = ((col % 2) === 0 ? -1 : 1) * 0.08;
+    blade.scale.setScalar(0.95 + ((row + col) % 4) * 0.05);
+    grassGroup.add(blade);
+  }
 }
 scene.add(grassGroup);
 
