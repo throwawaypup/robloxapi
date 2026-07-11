@@ -3,11 +3,11 @@ import * as THREE from 'three';
 
 const app = document.querySelector('#app');
 app.innerHTML = `
-  <div class="relative min-h-screen overflow-hidden bg-slate-950 text-slate-100">
-    <div id="scene" class="absolute inset-0"></div>
-    <div class="pointer-events-none absolute inset-0">
+  <div class="relative isolate min-h-screen overflow-hidden bg-slate-950 text-slate-100">
+    <div id="scene" class="absolute inset-0 z-0"></div>
+    <div class="pointer-events-none absolute inset-0 z-20">
       <div class="absolute right-2 top-2 text-[8px] uppercase tracking-[0.3em] text-slate-200/80 sm:right-3 sm:top-3 sm:text-[9px]">stoner.cat</div>
-      <div class="absolute bottom-3 left-3 right-3 rounded-[1.5rem] border border-white/20 bg-slate-900/65 p-3 shadow-2xl shadow-black/40 backdrop-blur-xl sm:bottom-6 sm:left-6 sm:right-auto sm:max-w-[20rem] sm:p-4 md:max-w-[22rem] lg:max-w-[24rem]">
+      <div class="absolute bottom-3 left-3 right-3 z-30 rounded-[1.5rem] border border-white/20 bg-slate-900/80 p-3 shadow-[0_18px_70px_rgba(0,0,0,0.45)] backdrop-blur-xl sm:bottom-6 sm:left-6 sm:right-auto sm:max-w-[20rem] sm:p-4 md:max-w-[22rem] lg:max-w-[24rem]">
         <div class="flex items-center gap-3">
           <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-emerald-300 to-cyan-400 text-sm font-semibold text-slate-950">SC</div>
           <div class="min-w-0">
@@ -128,35 +128,59 @@ const terrain = new THREE.Mesh(terrainGeometry, terrainMaterial);
 scene.add(terrain);
 
 const grassGroup = new THREE.Group();
-const grassRows = 24;
-const grassCols = 24;
-for (let row = 0; row < grassRows; row += 1) {
-  for (let col = 0; col < grassCols; col += 1) {
-    const x = (col - (grassCols - 1) / 2) * 5.4;
-    const z = (row - (grassRows - 1) / 2) * 5.4;
-    if (Math.abs(x) > terrainSize * 0.38 || Math.abs(z) > terrainSize * 0.38) continue;
+const clumpCount = 180;
+for (let i = 0; i < clumpCount; i += 1) {
+  const x = (((i * 37) % 29) - 14) * 4.4;
+  const z = (((i * 53) % 31) - 15) * 4.6;
+  if (Math.abs(x) > terrainSize * 0.38 || Math.abs(z) > terrainSize * 0.38) continue;
 
-    const y = getTerrainHeight(x, z) + 0.06;
+  const clumpSize = 3 + (i % 3);
+  for (let c = 0; c < clumpSize; c += 1) {
+    const offsetX = ((i + c * 7) % 5 - 2) * 0.45;
+    const offsetZ = ((i * 3 + c * 11) % 7 - 3) * 0.4;
+    const px = x + offsetX;
+    const pz = z + offsetZ;
+    const y = getTerrainHeight(px, pz) + 0.06;
     const blade = new THREE.Mesh(
-      new THREE.BoxGeometry(0.035, 0.11 + ((row + col) % 5) * 0.018, 0.035),
+      new THREE.BoxGeometry(0.03, 0.1 + ((i + c) % 5) * 0.015, 0.03),
       new THREE.MeshStandardMaterial({
-        color: new THREE.Color(0x4fb36d).offsetHSL(0, 0, ((row + col) % 7) * 0.007)
+        color: new THREE.Color(0x4fb36d).offsetHSL(0, 0, ((i + c) % 7) * 0.006)
       })
     );
-    blade.position.set(x, y, z);
-    blade.rotation.y = (row % 3) * 0.35;
-    blade.rotation.z = ((col % 2) === 0 ? -1 : 1) * 0.08;
-    blade.scale.setScalar(0.95 + ((row + col) % 4) * 0.05);
+    blade.position.set(px, y, pz);
+    blade.rotation.y = ((i + c) % 4) * 0.35;
+    blade.rotation.z = ((i + c) % 2 === 0 ? -1 : 1) * 0.08;
+    blade.scale.setScalar(0.9 + ((i + c) % 4) * 0.05);
     grassGroup.add(blade);
   }
 }
 scene.add(grassGroup);
 
+const pathGroup = new THREE.Group();
+const pathMaterial = new THREE.MeshStandardMaterial({ color: 0x7a4f2b, roughness: 0.98, metalness: 0.01 });
+const paths = [
+  { x: -16, z: 6, width: 20, length: 10, angle: 0.35 },
+  { x: 14, z: -10, width: 16, length: 8, angle: -0.55 }
+];
+paths.forEach((path) => {
+  const dirt = new THREE.Mesh(
+    new THREE.PlaneGeometry(path.length, path.width, 4, 4),
+    pathMaterial
+  );
+  dirt.rotation.x = -Math.PI / 2;
+  dirt.rotation.z = path.angle;
+  dirt.position.set(path.x, getTerrainHeight(path.x, path.z) + 0.01, path.z);
+  pathGroup.add(dirt);
+});
+scene.add(pathGroup);
+
 function getTerrainHeight(x, z) {
-  const base = samplePerlin(x * 0.017, z * 0.017);
-  const ridge = Math.sin((x + z) * 0.03) * 0.18 + Math.cos(x * 0.02 - z * 0.015) * 0.1;
-  const glow = Math.max(0, 1 - Math.abs(z) / (terrainSize * 0.55)) * 0.25;
-  return Math.max(0.1, base * 2.2 + ridge + Math.sin(x * 0.04) * 0.12 + Math.cos(z * 0.03) * 0.1 + glow * 0.35);
+  const base = samplePerlin(x * 0.016, z * 0.016);
+  const ridge = Math.sin((x + z) * 0.032) * 0.24 + Math.cos(x * 0.018 - z * 0.012) * 0.16;
+  const valley = Math.sin(x * 0.028 + z * 0.034) * 0.08;
+  const mound = Math.exp(-((x * x + z * z) / (terrainSize * terrainSize * 0.18))) * 0.35;
+  const horizonLift = Math.max(0, 1 - Math.abs(z) / (terrainSize * 0.58)) * 0.22;
+  return Math.max(0.08, base * 2.0 + ridge + valley + mound + Math.sin(x * 0.04) * 0.1 + Math.cos(z * 0.03) * 0.08 + horizonLift * 0.3);
 }
 
 function samplePerlin(x, z) {
@@ -192,9 +216,13 @@ function hash(x, z) {
 
 function animate(time) {
   requestAnimationFrame(animate);
-  const sway = Math.sin(time * 0.0006) * 0.008;
+  const sway = Math.sin(time * 0.0007) * 0.012;
   const wind = Math.sin(time * 0.0012) * 0.015;
+  const drift = Math.sin(time * 0.0004) * 0.016;
+  camera.position.x = drift * 0.4;
   camera.position.y = 1.72 + sway;
+  camera.position.z = Math.sin(time * 0.0005) * 0.01;
+  lookTarget.set(Math.sin(time * 0.00035) * 0.04, 1.7 + Math.sin(time * 0.0005) * 0.008, -24);
   camera.lookAt(lookTarget);
 
   grassGroup.children.forEach((blade, index) => {
